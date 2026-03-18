@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { useTheme } from "next-themes";
 
 const NIXOS_ASCII = `      ▗▄▄▄       ▗▄▄▄▄    ▄▄▄▖
       ▜███▙       ▜███▙  ▟███▛
@@ -113,6 +114,7 @@ const COMMANDS_LIST = [
 	{ cmd: "contact", desc: "reach out" },
 	// { cmd: "experience", desc: "work history" },
 	// { cmd: "education", desc: "background" },
+	{ cmd: "theme", desc: "change theme (light | dark | system)" },
 	{ cmd: "clear", desc: "clear screen" },
 ];
 
@@ -305,17 +307,17 @@ function TerminalWindow({
 }) {
 	return (
 		<div
-			className={`flex flex-col rounded-xl overflow-hidden bg-[#0d0f12] border border-zinc-800/60 shadow-2xl shadow-black/50 ${className}`}
+			className={`flex flex-col rounded-xl overflow-hidden bg-card text-foreground border border-border shadow-2xl shadow-black/10 dark:shadow-black/50 ${className}`}
 		>
 			{/* Title bar - Warp style */}
-			<div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-b from-zinc-800/40 to-zinc-900/40 border-b border-zinc-800/60">
+			<div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border">
 				<div className="flex items-center gap-2">
 					<div className="w-3 h-3 rounded-full bg-[#ff5f57] hover:bg-[#ff5f57]/80 transition-colors" />
 					<div className="w-3 h-3 rounded-full bg-[#febc2e] hover:bg-[#febc2e]/80 transition-colors" />
 					<div className="w-3 h-3 rounded-full bg-[#28c840] hover:bg-[#28c840]/80 transition-colors" />
 				</div>
 				<div className="flex-1 text-center">
-					<span className="text-[12px] text-zinc-500 font-medium">
+					<span className="text-[12px] text-muted-foreground font-medium">
 						{title}
 					</span>
 				</div>
@@ -385,6 +387,7 @@ function MainTerminal() {
 	const [isReady, setIsReady] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const terminalRef = useRef<HTMLDivElement>(null);
+	const { setTheme } = useTheme();
 
 	useEffect(() => {
 		const init = async () => {
@@ -415,6 +418,55 @@ function MainTerminal() {
 
 		setCommandHistory((prev) => [...prev, cmd]);
 		setHistoryIndex(-1);
+
+		// --- THEME COMMAND ---
+		if (trimmedCmd.startsWith("theme")) {
+			const [, value] = trimmedCmd.split(" ");
+
+			if (!value) {
+				setHistory((prev) => [
+					...prev,
+					{
+						command: cmd,
+						output: (
+							<div className="text-[13px] text-zinc-500">
+								usage: theme [light | dark | system]
+							</div>
+						),
+					},
+				]);
+				return;
+			}
+
+			if (["light", "dark", "system"].includes(value)) {
+				setTheme(value);
+
+				setHistory((prev) => [
+					...prev,
+					{
+						command: cmd,
+						output: (
+							<div className="text-[13px] text-zinc-500">
+								theme set to {value}
+							</div>
+						),
+					},
+				]);
+			} else {
+				setHistory((prev) => [
+					...prev,
+					{
+						command: cmd,
+						output: (
+							<div className="text-[13px] text-zinc-500">
+								invalid theme: {value}
+							</div>
+						),
+					},
+				]);
+			}
+			return;
+		}
 
 		if (trimmedCmd === "clear") {
 			setHistory([]);
@@ -496,7 +548,12 @@ function MainTerminal() {
 			}
 		} else if (e.key === "Tab") {
 			e.preventDefault();
-			const allCommands = [...Object.keys(COMMANDS), "help", "clear"];
+			const allCommands = [
+				...Object.keys(COMMANDS),
+				"help",
+				"clear",
+				"theme",
+			];
 			const matches = allCommands.filter((c) =>
 				c.startsWith(currentCommand.toLowerCase()),
 			);
@@ -534,9 +591,9 @@ function MainTerminal() {
 
 				{history.map((item, index) => (
 					<div key={index} className="mb-4 sm:mb-5">
-						<div className="flex items-center gap-2 text-[12px] sm:text-[13px] mb-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-zinc-900/50 rounded-lg border border-zinc-800/40">
+						<div className="flex items-center gap-2 text-[12px] sm:text-[13px] mb-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-muted/40 rounded-lg border border-border">
 							<span className="text-[#7ebae4]">$</span>
-							<span className="text-zinc-300 break-all">
+							<span className="text-foreground/90 break-all">
 								{item.command}
 							</span>
 						</div>
@@ -545,7 +602,7 @@ function MainTerminal() {
 				))}
 
 				{isReady && (
-					<div className="flex items-center gap-2 text-[12px] sm:text-[13px] px-2 sm:px-3 py-1.5 sm:py-2 bg-zinc-900/30 rounded-lg border border-zinc-800/40 focus-within:border-[#5277c3]/50 focus-within:bg-zinc-900/50 transition-all">
+					<div className="flex items-center gap-2 text-[12px] sm:text-[13px] px-2 sm:px-3 py-1.5 sm:py-2 bg-muted/20 rounded-lg border border-border focus-within:border-[#5277c3]/50 focus-within:bg-muted/40 transition-all">
 						<span className="text-[#7ebae4]">$</span>
 						<input
 							ref={inputRef}
@@ -553,7 +610,7 @@ function MainTerminal() {
 							value={currentCommand}
 							onChange={(e) => setCurrentCommand(e.target.value)}
 							onKeyDown={handleKeyDown}
-							className="flex-1 bg-transparent outline-none text-zinc-200 caret-[#7ebae4] placeholder:text-zinc-700 min-w-0"
+							className="flex-1 bg-transparent outline-none text-foreground caret-[#7ebae4] placeholder:text-muted-foreground min-w-0"
 							placeholder="type a command..."
 							spellCheck={false}
 							autoComplete="off"
@@ -568,7 +625,7 @@ function MainTerminal() {
 
 export function Terminal() {
 	return (
-		<div className="min-h-screen h-screen w-screen flex flex-col lg:flex-row p-2 sm:p-4 lg:p-6 gap-2 sm:gap-4 lg:gap-6 bg-gradient-to-br from-zinc-950 via-[#0a0c10] to-zinc-950">
+		<div className="min-h-screen h-screen w-screen flex flex-col lg:flex-row p-2 sm:p-4 lg:p-6 gap-2 sm:gap-4 lg:gap-6 bg-linear-to-br from-zinc-50 via-white to-zinc-100 dark:from-zinc-950 dark:via-[#0a0c10] dark:to-zinc-950">
 			<div className="hidden lg:flex w-1/2 h-full">
 				<Sidebar />
 			</div>

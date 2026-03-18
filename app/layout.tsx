@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fira_Code } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const firaCode = Fira_Code({
 	weight: ["400", "500"],
@@ -37,12 +38,16 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en">
-			<body
-				className={`${firaCode.variable} font-mono antialiased bg-zinc-950 text-zinc-300`}
-			>
-				{children}
-				<Analytics />
+		<html lang="en" suppressHydrationWarning>
+			<body className={`${firaCode.variable} font-mono antialiased`}>
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="system"
+					enableSystem
+				>
+					{children}
+					<Analytics />
+				</ThemeProvider>
 			</body>
 		</html>
 	);
