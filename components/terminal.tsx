@@ -404,6 +404,9 @@ function MainTerminal() {
 		if (isReady) {
 			inputRef.current?.focus();
 		}
+		if (isReady && history.length === 0) {
+			handleCommand("whoami");
+		}
 	}, [isReady]);
 
 	const handleCommand = (cmd: string) => {
