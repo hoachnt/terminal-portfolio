@@ -120,7 +120,7 @@ const COMMANDS_LIST = [
 
 const WhoamiOutput = () => (
 	<div className="text-[12px] sm:text-[13px] space-y-2">
-		<div className="text-zinc-100 font-medium">Nguyen Tien Hoach</div>
+		<div className="dark:text-zinc-100 text-zinc-900 font-medium">Nguyen Tien Hoach</div>
 		<div className="text-[#7ebae4]">Full-Stack Developer</div>
 		<div className="text-zinc-500 max-w-md leading-relaxed">
 			Software engineer specializing in developing scalable web
