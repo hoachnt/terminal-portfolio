@@ -388,6 +388,40 @@ function MainTerminal() {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const terminalRef = useRef<HTMLDivElement>(null);
 	const { setTheme } = useTheme();
+	const [themeRipple, setThemeRipple] = useState<null | {
+		key: number;
+		targetTheme: "light" | "dark" | "system";
+	}> (null);
+
+	const prefersReducedMotion =
+		typeof window !== "undefined" &&
+		window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+	const getThemeBaseColor = (target: "light" | "dark" | "system") => {
+		if (target === "dark") return "rgb(9 9 11)"; // zinc-950-ish
+		if (target === "light") return "rgb(250 250 250)"; // near-white
+		// system: pick current OS preference as best-effort
+		const prefersDark =
+			typeof window !== "undefined" &&
+			window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+		return prefersDark ? "rgb(9 9 11)" : "rgb(250 250 250)";
+	};
+
+	const runThemeRipple = (target: "light" | "dark" | "system") => {
+		if (prefersReducedMotion) {
+			setTheme(target);
+			return;
+		}
+
+		const key = Date.now();
+		setThemeRipple({ key, targetTheme: target });
+
+		// Switch the actual theme near the end so when the overlay fades,
+		// the UI is already in the new theme.
+		window.setTimeout(() => setTheme(target), 520);
+		// Let the overlay fully finish and unmount.
+		window.setTimeout(() => setThemeRipple(null), 820);
+	};
 
 	useEffect(() => {
 		const init = async () => {
@@ -439,7 +473,7 @@ function MainTerminal() {
 			}
 
 			if (["light", "dark", "system"].includes(value)) {
-				setTheme(value);
+				runThemeRipple(value as "light" | "dark" | "system");
 
 				setHistory((prev) => [
 					...prev,
@@ -568,6 +602,12 @@ function MainTerminal() {
 
 	return (
 		<TerminalWindow title="~/portfolio" className="w-full h-full">
+			{themeRipple && (
+				<ThemeRippleOverlay
+					key={themeRipple.key}
+					baseColor={getThemeBaseColor(themeRipple.targetTheme)}
+				/>
+			)}
 			<div
 				ref={terminalRef}
 				onClick={() => inputRef.current?.focus()}
@@ -620,6 +660,94 @@ function MainTerminal() {
 				)}
 			</div>
 		</TerminalWindow>
+	);
+}
+
+function ThemeRippleOverlay({ baseColor }: { baseColor: string }) {
+	return (
+		<div
+			className="pointer-events-none fixed inset-0 z-[9999]"
+			aria-hidden="true"
+		>
+			<div
+				className="tp-ripple-layer"
+				style={
+					{
+						["--tp-base" as any]: baseColor,
+					} as React.CSSProperties
+				}
+			/>
+			<style jsx global>{`
+				@keyframes tp-ripple-reveal {
+					0% {
+						clip-path: circle(0vmax at 50% 50%);
+						transform: translateZ(0) scale(1.02);
+						opacity: 0.0;
+					}
+					8% {
+						opacity: 1;
+					}
+					100% {
+						clip-path: circle(150vmax at 50% 50%);
+						transform: translateZ(0) scale(1);
+						opacity: 1;
+					}
+				}
+
+				@keyframes tp-ripple-fade {
+					0% {
+						opacity: 1;
+					}
+					100% {
+						opacity: 0;
+					}
+				}
+
+				.tp-ripple-layer {
+					position: absolute;
+					inset: 0;
+					background:
+						radial-gradient(
+							1400px 900px at 50% 45%,
+							rgba(255, 255, 255, 0.22) 0%,
+							rgba(255, 255, 255, 0.0) 58%
+						),
+						radial-gradient(
+							900px 700px at 55% 55%,
+							rgba(255, 255, 255, 0.10) 0%,
+							rgba(255, 255, 255, 0.0) 62%
+						),
+						linear-gradient(
+							135deg,
+							color-mix(in srgb, var(--tp-base) 92%, white 8%) 0%,
+							var(--tp-base) 55%,
+							color-mix(in srgb, var(--tp-base) 92%, black 8%) 100%
+						);
+					/* "Liquid glass": blur what's beneath + soft bloom */
+					backdrop-filter: blur(18px) saturate(1.25) contrast(1.05);
+					-webkit-backdrop-filter: blur(18px) saturate(1.25) contrast(1.05);
+					filter: blur(0.2px);
+
+					/* Extra "fluid" feel: subtle grain via tiny overlay */
+					box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+
+					animation:
+						tp-ripple-reveal 720ms cubic-bezier(0.2, 0.95, 0.2, 1) both,
+						tp-ripple-fade 220ms ease-out both;
+					animation-delay: 0ms, 600ms;
+
+					will-change: clip-path, opacity, transform;
+				}
+
+				@media (prefers-reduced-motion: reduce) {
+					.tp-ripple-layer {
+						animation: none !important;
+						clip-path: none !important;
+						opacity: 1 !important;
+					}
+				}
+			`}</style>
+		</div>
 	);
 }
 
