@@ -418,9 +418,9 @@ function MainTerminal() {
 
 		// Switch the actual theme near the end so when the overlay fades,
 		// the UI is already in the new theme.
-		window.setTimeout(() => setTheme(target), 520);
+		window.setTimeout(() => setTheme(target), 880);
 		// Let the overlay fully finish and unmount.
-		window.setTimeout(() => setThemeRipple(null), 820);
+		window.setTimeout(() => setThemeRipple(null), 1600);
 	};
 
 	useEffect(() => {
@@ -669,6 +669,43 @@ function ThemeRippleOverlay({ baseColor }: { baseColor: string }) {
 			className="pointer-events-none fixed inset-0 z-[9999]"
 			aria-hidden="true"
 		>
+			<svg
+				aria-hidden="true"
+				focusable="false"
+				width="0"
+				height="0"
+				className="absolute"
+			>
+				<filter
+					id="tp-liquid-displace"
+					x="-20%"
+					y="-20%"
+					width="140%"
+					height="140%"
+				>
+					<feTurbulence
+						type="fractalNoise"
+						baseFrequency="0.012 0.02"
+						numOctaves="2"
+						seed="2"
+						result="noise"
+					>
+						<animate
+							attributeName="baseFrequency"
+							dur="1.4s"
+							values="0.010 0.018;0.016 0.026;0.012 0.02"
+							repeatCount="indefinite"
+						/>
+					</feTurbulence>
+					<feDisplacementMap
+						in="SourceGraphic"
+						in2="noise"
+						scale="14"
+						xChannelSelector="R"
+						yChannelSelector="G"
+					/>
+				</filter>
+			</svg>
 			<div
 				className="tp-ripple-layer"
 				style={
@@ -681,16 +718,38 @@ function ThemeRippleOverlay({ baseColor }: { baseColor: string }) {
 				@keyframes tp-ripple-reveal {
 					0% {
 						clip-path: circle(0vmax at 50% 50%);
-						transform: translateZ(0) scale(1.02);
-						opacity: 0.0;
+						transform: translateZ(0) scale(1.04);
+						opacity: 0;
 					}
-					8% {
+					10% {
 						opacity: 1;
+					}
+					38% {
+						clip-path: circle(62vmax at 49% 51%);
+					}
+					58% {
+						clip-path: circle(108vmax at 51% 49%);
+					}
+					78% {
+						clip-path: circle(156vmax at 50% 50%);
+						transform: translateZ(0) scale(0.992);
 					}
 					100% {
 						clip-path: circle(150vmax at 50% 50%);
 						transform: translateZ(0) scale(1);
 						opacity: 1;
+					}
+				}
+
+				@keyframes tp-ripple-viscosity {
+					0% {
+						filter: url(#tp-liquid-displace) blur(0.45px);
+					}
+					65% {
+						filter: url(#tp-liquid-displace) blur(0.3px);
+					}
+					100% {
+						filter: url(#tp-liquid-displace) blur(0.2px);
 					}
 				}
 
@@ -726,15 +785,15 @@ function ThemeRippleOverlay({ baseColor }: { baseColor: string }) {
 					/* "Liquid glass": blur what's beneath + soft bloom */
 					backdrop-filter: blur(18px) saturate(1.25) contrast(1.05);
 					-webkit-backdrop-filter: blur(18px) saturate(1.25) contrast(1.05);
-					filter: blur(0.2px);
 
 					/* Extra "fluid" feel: subtle grain via tiny overlay */
 					box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 
 					animation:
-						tp-ripple-reveal 720ms cubic-bezier(0.2, 0.95, 0.2, 1) both,
-						tp-ripple-fade 220ms ease-out both;
-					animation-delay: 0ms, 600ms;
+						tp-ripple-reveal 1180ms cubic-bezier(0.16, 1, 0.3, 1) both,
+						tp-ripple-viscosity 1180ms cubic-bezier(0.16, 1, 0.3, 1) both,
+						tp-ripple-fade 520ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+					animation-delay: 0ms, 0ms, 980ms;
 
 					will-change: clip-path, opacity, transform;
 				}
@@ -743,6 +802,7 @@ function ThemeRippleOverlay({ baseColor }: { baseColor: string }) {
 					.tp-ripple-layer {
 						animation: none !important;
 						clip-path: none !important;
+						filter: none !important;
 						opacity: 1 !important;
 					}
 				}
