@@ -3,11 +3,17 @@
 import * as React from "react";
 import type { KeyboardEvent } from "react";
 import { useTheme } from "next-themes";
-import { COMMANDS, COMMANDS_LIST } from "./commands";
+import {
+	BuiltinCommandOutput,
+	getCommandsListStatic,
+	isTerminalCommandKey,
+} from "./commands";
 import { NeofetchOutput } from "./outputs";
 import { ThemeRippleOverlay } from "./ThemeRippleOverlay";
 import { TerminalWindow } from "./TerminalWindow";
 import { usePrefersDarkColorScheme, usePrefersReducedMotion } from "./hooks";
+import { isLocale, useTerminalLocale } from "./locale-context";
+import { LOCALE_LABEL } from "./messages";
 
 interface CommandOutput {
 	id: number;
@@ -28,6 +34,7 @@ function getThemeBaseColor({
 }
 
 export const MainTerminal = React.memo(function MainTerminal() {
+	const { locale, setLocale, t } = useTerminalLocale();
 	const [history, setHistory] = React.useState<CommandOutput[]>([]);
 	const [currentCommand, setCurrentCommand] = React.useState("");
 	const [commandHistory, setCommandHistory] = React.useState<string[]>([]);
@@ -62,7 +69,23 @@ export const MainTerminal = React.memo(function MainTerminal() {
 	}, [prefersDark, themeRipple]);
 
 	const allCommands = React.useMemo(() => {
-		return [...Object.keys(COMMANDS), "help", "clear", "theme"];
+		return [
+			"neofetch",
+			"whoami",
+			"skills",
+			"contact",
+			"ls",
+			"pwd",
+			"date",
+			"sudo rm -rf /",
+			"exit",
+			"vim",
+			"nvim",
+			"help",
+			"clear",
+			"theme",
+			"lang",
+		];
 	}, []);
 
 	const runThemeRipple = React.useCallback(
@@ -91,6 +114,11 @@ export const MainTerminal = React.memo(function MainTerminal() {
 		[],
 	);
 
+	const commandsListForHelp = React.useMemo(
+		() => getCommandsListStatic(locale),
+		[locale],
+	);
+
 	const handleCommand = React.useCallback(
 		(cmd: string) => {
 			const trimmedCmd = cmd.trim().toLowerCase();
@@ -105,9 +133,7 @@ export const MainTerminal = React.memo(function MainTerminal() {
 				if (!value) {
 					appendHistory(
 						cmd,
-						<div className="text-[13px] text-zinc-500">
-							usage: theme [light | dark | system]
-						</div>,
+						<div className="text-[13px] text-zinc-500">{t("themeUsage")}</div>,
 					);
 					return;
 				}
@@ -117,14 +143,44 @@ export const MainTerminal = React.memo(function MainTerminal() {
 					appendHistory(
 						cmd,
 						<div className="text-[13px] text-zinc-500">
-							theme set to {value}
+							{t("themeSet")} {value}
 						</div>,
 					);
 				} else {
 					appendHistory(
 						cmd,
 						<div className="text-[13px] text-zinc-500">
-							invalid theme: {value}
+							{t("themeInvalid")} {value}
+						</div>,
+					);
+				}
+				return;
+			}
+
+			if (trimmedCmd.startsWith("lang")) {
+				const [, value] = trimmedCmd.split(/\s+/);
+
+				if (!value) {
+					appendHistory(
+						cmd,
+						<div className="text-[13px] text-zinc-500">{t("langUsage")}</div>,
+					);
+					return;
+				}
+
+				if (isLocale(value)) {
+					setLocale(value);
+					appendHistory(
+						cmd,
+						<div className="text-[13px] text-zinc-500">
+							{t("langSet")} {LOCALE_LABEL[value]} ({value})
+						</div>,
+					);
+				} else {
+					appendHistory(
+						cmd,
+						<div className="text-[13px] text-zinc-500">
+							{t("langInvalid")} {value}
 						</div>,
 					);
 				}
@@ -140,7 +196,7 @@ export const MainTerminal = React.memo(function MainTerminal() {
 				appendHistory(
 					cmd,
 					<div className="text-[13px] space-y-1">
-						{COMMANDS_LIST.map(({ cmd: c, desc }) => (
+						{commandsListForHelp.map(({ cmd: c, desc }) => (
 							<div key={c}>
 								<span className="text-[#7ebae4]">{c}</span>
 								<span className="text-zinc-700 mx-2">-</span>
@@ -152,22 +208,28 @@ export const MainTerminal = React.memo(function MainTerminal() {
 				return;
 			}
 
-			const commandResult = (COMMANDS as Record<string, React.ReactNode>)[
-				trimmedCmd
-			];
-
-			if (commandResult) {
-				appendHistory(cmd, commandResult);
-			} else {
+			if (isTerminalCommandKey(trimmedCmd)) {
 				appendHistory(
 					cmd,
-					<div className="text-[13px] text-zinc-500">
-						command not found: {cmd}
-					</div>,
+					<BuiltinCommandOutput name={trimmedCmd} />,
 				);
+				return;
 			}
+
+			appendHistory(
+				cmd,
+				<div className="text-[13px] text-zinc-500">
+					{t("commandNotFound")} {cmd}
+				</div>,
+			);
 		},
-		[appendHistory, runThemeRipple],
+		[
+			appendHistory,
+			commandsListForHelp,
+			runThemeRipple,
+			setLocale,
+			t,
+		],
 	);
 
 	const handleKeyDown = React.useCallback(
@@ -254,7 +316,7 @@ export const MainTerminal = React.memo(function MainTerminal() {
 	}, [handleCommand, history.length, isReady]);
 
 	return (
-		<TerminalWindow title="~/portfolio" className="w-full h-full">
+		<TerminalWindow title={t("windowPortfolio")} className="w-full h-full">
 			{themeRipple && baseColor && (
 				<ThemeRippleOverlay key={themeRipple.key} baseColor={baseColor} />
 			)}
@@ -267,13 +329,15 @@ export const MainTerminal = React.memo(function MainTerminal() {
 				<div className="lg:hidden mb-6">
 					<NeofetchOutput compact />
 					<div className="mt-4 text-[11px] sm:text-[12px] text-zinc-600">
-						type <span className="text-[#7ebae4]">help</span> to see commands
+						{t("hintTypeHelp")}{" "}
+						<span className="text-[#7ebae4]">help</span> {t("hintHelpRest")}
 					</div>
 				</div>
 
 				{history.length === 0 && (
 					<div className="hidden lg:block text-[13px] text-zinc-600 mb-4">
-						type <span className="text-[#7ebae4]">help</span> to see commands
+						{t("hintTypeHelp")}{" "}
+						<span className="text-[#7ebae4]">help</span> {t("hintHelpRest")}
 					</div>
 				)}
 
@@ -299,7 +363,7 @@ export const MainTerminal = React.memo(function MainTerminal() {
 							onChange={(e) => setCurrentCommand(e.target.value)}
 							onKeyDown={handleKeyDown}
 							className="flex-1 bg-transparent outline-none text-foreground caret-[#7ebae4] placeholder:text-muted-foreground min-w-0"
-							placeholder="type a command..."
+							placeholder={t("placeholderInput")}
 							spellCheck={false}
 							autoComplete="off"
 							autoCapitalize="off"
@@ -310,4 +374,3 @@ export const MainTerminal = React.memo(function MainTerminal() {
 		</TerminalWindow>
 	);
 });
-

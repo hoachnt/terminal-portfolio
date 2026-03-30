@@ -8,9 +8,11 @@ import {
 } from "@/components/ui/resizable";
 import { MainTerminal } from "./MainTerminal";
 import { Sidebar } from "./Sidebar";
+import { TerminalLocaleProvider } from "./locale-context";
 
 export const Terminal = React.memo(function Terminal() {
 	return (
+		<TerminalLocaleProvider>
 		<div className="min-h-screen h-screen w-screen flex flex-col p-2 sm:p-4 lg:p-6 gap-2 sm:gap-4 bg-linear-to-br from-zinc-50 via-white to-zinc-100 dark:from-zinc-950 dark:via-[#0a0c10] dark:to-zinc-950">
 			<div className="flex w-full h-full min-h-0 lg:hidden">
 				<MainTerminal />
@@ -37,6 +39,7 @@ export const Terminal = React.memo(function Terminal() {
 				</ResizablePanelGroup>
 			</div>
 		</div>
+		</TerminalLocaleProvider>
 	);
 });
 
